@@ -1,14 +1,16 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createServerClient, createBrowserClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies, headers } from 'next/headers'
 
-function getBaseUrl() {
-  const h = headers()
+async function getBaseUrl() {
+  const h = await headers()
   const origin = h.get('origin')
+
   if (origin) return origin
+
   return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 }
 
@@ -39,7 +41,9 @@ async function getAuthedSupabase() {
 
 export async function signOutAction() {
   const supabase = await getAuthedSupabase()
+
   await supabase.auth.signOut()
+
   redirect('/login')
 }
 
@@ -54,7 +58,7 @@ export async function sendPasswordResetAction() {
     redirect('/dashboard/profile?error=no-email')
   }
 
-  const baseUrl = getBaseUrl()
+  const baseUrl = await getBaseUrl()
 
   const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
     redirectTo: `${baseUrl}/reset-password`,
@@ -89,7 +93,6 @@ export async function deleteAccountAction() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // delete user-owned rows first if your FK constraints require it
   await admin.from('profiles').delete().eq('id', user.id)
 
   if (profile?.business_id) {
@@ -107,5 +110,6 @@ export async function deleteAccountAction() {
   }
 
   await supabase.auth.signOut()
+
   redirect('/signup')
 }
