@@ -99,17 +99,29 @@ export default function InstallPage() {
     loadInstallData()
   }, [router, supabase])
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+   // FORCE production URL (no localhost fallback)
+  const baseUrl = useMemo(() => {
+    const envUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL
+
+    if (envUrl) return envUrl.replace(/\/$/, '')
+
+    // HARD fallback (only used if env is missing)
+    if (typeof window !== 'undefined') {
+      return window.location.origin
+    }
+
+    return ''
+  }, [])
 
   const widgetUrl = useMemo(() => {
-    if (!business) return ''
+    if (!business || !baseUrl) return ''
     return `${baseUrl}/widget/${business.slug}`
   }, [baseUrl, business])
 
   const embedCode = useMemo(() => {
-    if (!business) return ''
+    if (!business || !baseUrl) return ''
 
     return `<script
   src="${baseUrl}/embed.js"
