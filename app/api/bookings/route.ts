@@ -15,6 +15,16 @@ const supabaseAdmin = createClient(
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+const APP_URL = (
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  'https://sxqopxep.up.railway.app'
+).replace(/\/$/, '')
+
+function redirectToWidget(slug: string, status: 'success' | 'error') {
+  return NextResponse.redirect(`${APP_URL}/widget/${slug}?${status}=1`, 303)
+}
+
 function formatDateLabel(dateStr: string) {
   const date = new Date(`${dateStr}T12:00:00`)
   return date.toLocaleDateString(undefined, {
@@ -172,10 +182,7 @@ export async function POST(req: Request) {
     .single()
 
   if (serviceError || !service) {
-    return NextResponse.redirect(
-      new URL(`/widget/${business.slug}?error=1`, req.url),
-      303
-    )
+    return redirectToWidget(business.slug, 'error')
   }
 
   const { data: insertedBooking, error } = await supabaseAdmin
@@ -197,11 +204,7 @@ export async function POST(req: Request) {
 
   if (error || !insertedBooking) {
     console.error('booking insert error:', error)
-
-    return NextResponse.redirect(
-      new URL(`/widget/${business.slug}?error=1`, req.url),
-      303
-    )
+    return redirectToWidget(business.slug, 'error')
   }
 
   const duration = Number(service.duration_minutes || 0)
@@ -397,8 +400,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.redirect(
-    new URL(`/widget/${business.slug}?success=1`, req.url),
-    303
-  )
+  return redirectToWidget(business.slug, 'success')
 }
