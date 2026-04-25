@@ -15,6 +15,13 @@ type BusinessRow = {
   slug: string
 }
 
+type WidgetRow = {
+  launcher_label: string | null
+  launcher_icon: string | null
+  launcher_color: string | null
+  launcher_position: string | null
+}
+
 export default function InstallPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
@@ -25,6 +32,7 @@ export default function InstallPage() {
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('')
 
   const [business, setBusiness] = useState<BusinessRow | null>(null)
+  const [widget, setWidget] = useState<WidgetRow | null>(null)
 
   useEffect(() => {
     async function loadInstallData() {
@@ -68,7 +76,23 @@ export default function InstallPage() {
         return
       }
 
+      const { data: widgetRow, error: widgetError } = await supabase
+        .from('widgets')
+        .select('launcher_label, launcher_icon, launcher_color, launcher_position')
+        .eq('business_id', profile.business_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<WidgetRow>()
+
+      if (widgetError) {
+        setMessage('Could not load launcher settings.')
+        setMessageType('error')
+        setLoading(false)
+        return
+      }
+
       setBusiness(businessRow)
+      setWidget(widgetRow)
       setLoading(false)
     }
 
@@ -76,9 +100,8 @@ export default function InstallPage() {
   }, [router, supabase])
 
   const baseUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000'
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
 
   const widgetUrl = useMemo(() => {
     if (!business) return ''
@@ -91,10 +114,12 @@ export default function InstallPage() {
     return `<script
   src="${baseUrl}/embed.js"
   data-slug="${business.slug}"
-  data-label="Book Now"
-  data-position="right"
+  data-label="${widget?.launcher_label || 'Book Now'}"
+  data-position="${widget?.launcher_position || 'right'}"
+  data-color="${widget?.launcher_color || '#FF9F43'}"
+  data-icon="${widget?.launcher_icon || 'calendar'}"
 ></script>`
-  }, [baseUrl, business])
+  }, [baseUrl, business, widget])
 
   async function handleCopy() {
     if (!embedCode) return
@@ -132,11 +157,9 @@ export default function InstallPage() {
   return (
     <main className="space-y-8">
       <div>
-        
         <h1 className="text-3xl font-semibold md:text-4xl">
           Install your booking launcher
         </h1>
-        
       </div>
 
       {message && (
@@ -201,7 +224,7 @@ export default function InstallPage() {
                 <p className="mt-2 font-medium">Copy the script</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
                   Use the install snippet above. It already includes your
-                  business slug.
+                  business slug and launcher settings.
                 </p>
               </div>
 
@@ -222,7 +245,7 @@ export default function InstallPage() {
                 </p>
                 <p className="mt-2 font-medium">Launch the widget</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  A floating “Book Now” button will appear in the bottom corner.
+                  A floating booking button will appear in the selected corner.
                   Clicking it opens your booking widget in a modal.
                 </p>
               </div>
@@ -264,6 +287,17 @@ export default function InstallPage() {
                 </p>
                 <p className="mt-2 break-all text-sm text-[var(--text-primary)]">
                   {widgetUrl}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                  Launcher
+                </p>
+                <p className="mt-2 text-sm text-[var(--text-primary)]">
+                  {widget?.launcher_label || 'Book Now'} ·{' '}
+                  {widget?.launcher_icon || 'calendar'} ·{' '}
+                  {widget?.launcher_position || 'right'}
                 </p>
               </div>
             </div>

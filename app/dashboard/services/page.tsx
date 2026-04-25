@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import {
+  CheckCircle2,
+  Clock3,
+  DollarSign,
+  Inbox,
+  Plus,
+  Power,
+  Trash2,
+  Wrench,
+} from 'lucide-react'
 
 type ProfileRow = {
   business_id: string
@@ -24,6 +34,32 @@ const defaultForm = {
   price_label: '',
 }
 
+function EmptyState() {
+  return (
+    <div className="surface rounded-[24px] bg-white p-8 text-center shadow-sm">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-soft)] text-[var(--text-muted)]">
+        <Inbox className="h-6 w-6" />
+      </div>
+      <h3 className="font-semibold text-[var(--text-primary)]">No services yet</h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--text-secondary)]">
+        Add your first service to make your booking widget usable for customers.
+      </p>
+    </div>
+  )
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  if (active) {
+    return <span className="badge-success">Active</span>
+  }
+
+  return (
+    <span className="rounded-full border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-1 text-xs font-semibold text-[var(--text-muted)]">
+      Inactive
+    </span>
+  )
+}
+
 export default function ServicesPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
@@ -34,6 +70,7 @@ export default function ServicesPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [workingId, setWorkingId] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('')
 
@@ -70,15 +107,16 @@ export default function ServicesPage() {
 
       const { data: serviceRows, error: servicesError } = await supabase
         .from('services')
-        .select('*')
+        .select('id, name, description, duration_minutes, price_label, is_active')
         .eq('business_id', profile.business_id)
         .order('created_at', { ascending: false })
+        .returns<Service[]>()
 
       if (servicesError) {
         setMessage(`Error loading services: ${servicesError.message}`)
         setMessageType('error')
       } else {
-        setServices((serviceRows || []) as Service[])
+        setServices(serviceRows ?? [])
       }
 
       setLoading(false)
@@ -87,9 +125,7 @@ export default function ServicesPage() {
     loadServices()
   }, [router, supabase])
 
-  function updateField(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) {
+  function updateField(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target
     setForm((prev) => ({
       ...prev,
@@ -107,27 +143,27 @@ export default function ServicesPage() {
     }
 
     setSaving(true)
-    setMessage('Saving...')
+    setMessage('')
     setMessageType('')
 
     const { data, error } = await supabase
       .from('services')
       .insert({
         business_id: businessId,
-        name: form.name,
-        description: form.description || null,
+        name: form.name.trim(),
+        description: form.description.trim() || null,
         duration_minutes: Number(form.duration_minutes),
-        price_label: form.price_label || null,
+        price_label: form.price_label.trim() || null,
         is_active: true,
       })
-      .select()
-      .single()
+      .select('id, name, description, duration_minutes, price_label, is_active')
+      .single<Service>()
 
     if (error) {
       setMessage(`Error creating service: ${error.message}`)
       setMessageType('error')
-    } else {
-      setServices((prev) => [data as Service, ...prev])
+    } else if (data) {
+      setServices((prev) => [data, ...prev])
       setForm(defaultForm)
       setMessage('Service created successfully.')
       setMessageType('success')
@@ -137,6 +173,10 @@ export default function ServicesPage() {
   }
 
   async function toggleServiceActive(serviceId: string, currentValue: boolean) {
+    setWorkingId(serviceId)
+    setMessage('')
+    setMessageType('')
+
     const { error } = await supabase
       .from('services')
       .update({ is_active: !currentValue })
@@ -145,43 +185,52 @@ export default function ServicesPage() {
     if (error) {
       setMessage(`Error updating service: ${error.message}`)
       setMessageType('error')
+      setWorkingId(null)
       return
     }
 
     setServices((prev) =>
       prev.map((service) =>
-        service.id === serviceId
-          ? { ...service, is_active: !currentValue }
-          : service
+        service.id === serviceId ? { ...service, is_active: !currentValue } : service
       )
     )
 
     setMessage('Service updated successfully.')
     setMessageType('success')
+    setWorkingId(null)
   }
 
   async function deleteService(serviceId: string) {
-    const { error } = await supabase
-      .from('services')
-      .delete()
-      .eq('id', serviceId)
+    const confirmed = window.confirm('Delete this service? This cannot be undone.')
+
+    if (!confirmed) return
+
+    setWorkingId(serviceId)
+    setMessage('')
+    setMessageType('')
+
+    const { error } = await supabase.from('services').delete().eq('id', serviceId)
 
     if (error) {
       setMessage(`Error deleting service: ${error.message}`)
       setMessageType('error')
+      setWorkingId(null)
       return
     }
 
     setServices((prev) => prev.filter((service) => service.id !== serviceId))
     setMessage('Service deleted successfully.')
     setMessageType('success')
+    setWorkingId(null)
   }
+
+  const activeCount = services.filter((service) => service.is_active).length
 
   if (loading) {
     return (
-      <main className="min-h-screen">
-        <div className="card p-6">
-          <p>Loading services...</p>
+      <main className="space-y-8">
+        <div className="surface rounded-[24px] bg-white p-6 shadow-sm">
+          <p className="text-[var(--text-secondary)]">Loading services...</p>
         </div>
       </main>
     )
@@ -189,28 +238,49 @@ export default function ServicesPage() {
 
   return (
     <main className="space-y-8">
-      <div>
-        
-        <h1 className="text-3xl font-semibold md:text-4xl">
-          Manage your services
-        </h1>
-        
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Services</h1>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Create the services customers can book from your widget.
+          </p>
+        </div>
+
+        <div className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm">
+          {activeCount} active · {services.length} total
+        </div>
       </div>
 
+      {message && (
+        <div
+          className={
+            messageType === 'success'
+              ? 'badge-success w-fit rounded-2xl px-4 py-3'
+              : 'badge-danger w-fit rounded-2xl px-4 py-3'
+          }
+        >
+          {message}
+        </div>
+      )}
+
       <div className="grid gap-8 xl:grid-cols-[420px_1fr]">
-        <div className="card p-6 md:p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold">Add Service</h2>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Create a new service and publish it to your widget.
-            </p>
+        <div className="surface rounded-[28px] bg-white p-6 shadow-sm md:p-8">
+          <div className="mb-6 flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[#dd6b20]">
+              <Plus className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Add service</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                Add a service, estimate, consultation, or appointment type.
+              </p>
+            </div>
           </div>
 
           <form onSubmit={handleCreateService} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-medium">
-                Service Name
-              </label>
+              <label className="mb-2 block text-sm font-medium">Service name</label>
               <input
                 name="name"
                 value={form.name}
@@ -221,9 +291,7 @@ export default function ServicesPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">
-                Description
-              </label>
+              <label className="mb-2 block text-sm font-medium">Description</label>
               <textarea
                 name="description"
                 value={form.description}
@@ -235,9 +303,7 @@ export default function ServicesPage() {
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Duration (minutes)
-                </label>
+                <label className="mb-2 block text-sm font-medium">Duration</label>
                 <input
                   name="duration_minutes"
                   type="number"
@@ -247,113 +313,104 @@ export default function ServicesPage() {
                   onChange={updateField}
                   required
                 />
+                <p className="mt-2 text-xs text-[var(--text-muted)]">Minutes</p>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Price Label
-                </label>
+                <label className="mb-2 block text-sm font-medium">Price label</label>
                 <input
                   name="price_label"
                   value={form.price_label}
                   onChange={updateField}
                   placeholder="Free estimate"
                 />
+                <p className="mt-2 text-xs text-[var(--text-muted)]">Optional</p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="btn-primary disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Add Service'}
-              </button>
-
-              {message && (
-                <div
-                  className={`rounded-xl border px-4 py-3 text-sm ${
-                    messageType === 'success'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                      : messageType === 'error'
-                        ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                        : 'border-white/10 bg-white/5 text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {message}
-                </div>
-              )}
-            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-primary inline-flex w-full items-center justify-center gap-2 rounded-full text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              {saving ? 'Saving...' : 'Add service'}
+            </button>
           </form>
         </div>
 
-        <div className="card p-6 md:p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold">Current Services</h2>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              These are the services currently attached to your business.
-            </p>
+        <div className="surface rounded-[28px] bg-white p-6 shadow-sm md:p-8">
+          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Current services</h2>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                These appear in your booking widget when active.
+              </p>
+            </div>
           </div>
 
           {services.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <p className="text-sm text-[var(--text-secondary)]">
-                No services yet. Add your first service to make your widget
-                bookable.
-              </p>
-            </div>
+            <EmptyState />
           ) : (
             <div className="space-y-4">
               {services.map((service) => (
                 <div
                   key={service.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-5"
+                  className="rounded-[24px] border border-[var(--border)] bg-[var(--surface-alt)] p-5 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-md)]"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-semibold">{service.name}</h3>
-
-                        <span
-                          className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                            service.is_active
-                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                              : 'border-white/10 bg-white/5 text-[var(--text-secondary)]'
-                          }`}
-                        >
-                          {service.is_active ? 'Active' : 'Inactive'}
-                        </span>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[#dd6b20]">
+                          <Wrench className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-lg font-semibold tracking-tight">{service.name}</h3>
+                        <StatusBadge active={service.is_active} />
                       </div>
 
-                      <div className="mt-2 flex flex-wrap gap-4 text-sm text-[var(--text-secondary)]">
-                        <span>{service.duration_minutes} min</span>
-                        {service.price_label && <span>{service.price_label}</span>}
+                      <div className="mt-4 flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1 font-medium">
+                          <Clock3 className="h-4 w-4 text-[var(--text-muted)]" />
+                          {service.duration_minutes} min
+                        </span>
+
+                        {service.price_label && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1 font-medium">
+                            <DollarSign className="h-4 w-4 text-[var(--text-muted)]" />
+                            {service.price_label}
+                          </span>
+                        )}
                       </div>
 
                       {service.description && (
-                        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
                           {service.description}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3 lg:justify-end">
                       <button
                         type="button"
-                        onClick={() =>
-                          toggleServiceActive(service.id, service.is_active)
-                        }
-                        className="btn-secondary text-sm"
+                        disabled={workingId === service.id}
+                        onClick={() => toggleServiceActive(service.id, service.is_active)}
+                        className="btn-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {service.is_active ? 'Deactivate' : 'Activate'}
+                        {service.is_active ? <Power className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                        {workingId === service.id
+                          ? 'Saving...'
+                          : service.is_active
+                            ? 'Deactivate'
+                            : 'Activate'}
                       </button>
 
                       <button
                         type="button"
+                        disabled={workingId === service.id}
                         onClick={() => deleteService(service.id)}
-                        className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/15"
+                        className="inline-flex items-center gap-2 rounded-full border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-4 py-2 text-sm font-semibold text-[var(--danger)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
                       >
+                        <Trash2 className="h-4 w-4" />
                         Delete
                       </button>
                     </div>

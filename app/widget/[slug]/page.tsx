@@ -56,7 +56,6 @@ export default async function WidgetPage({
   const error = resolvedSearchParams.error === '1'
   const embed = resolvedSearchParams.embed === '1'
 
-  // --- business ---
   const { data: business, error: businessError } = await supabase
     .from('businesses')
     .select('id, name, slug, email')
@@ -65,7 +64,6 @@ export default async function WidgetPage({
 
   if (businessError || !business) return notFound()
 
-  // --- widget ---
   const { data: widget, error: widgetError } = await supabase
     .from('widgets')
     .select('*')
@@ -76,7 +74,6 @@ export default async function WidgetPage({
 
   if (widgetError || !widget) return notFound()
 
-  // --- services ---
   const { data: services } = await supabase
     .from('services')
     .select('id, name, description, duration_minutes, price_label, is_active')
@@ -88,41 +85,55 @@ export default async function WidgetPage({
     <PublicBookingForm
       business={business}
       widget={widget}
-      services={services || []}
+      services={services ?? []}
       success={success}
       error={error}
     />
   )
+if (embed) {
+  return (
+    <>
+      <style>{`
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
 
-  // --- EMBED MODE ---
-  if (embed) {
-    return (
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
+`}</style>
+
       <main
+        className="h-screen w-screen overflow-hidden"
         style={{
-          backgroundColor: widget.background_color || '#ffffff',
+          backgroundColor: 'transparent',
           color: widget.text_color,
-          minHeight: '100vh',
         }}
       >
-        <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-6 md:py-8">
+        <div className="h-full w-full">
           {content}
         </div>
       </main>
-    )
-  }
+    </>
+  )
+}
+  
 
-  // --- FULL PAGE MODE ---
   return (
     <main
-      className="px-4 py-8 md:px-6 md:py-14"
+      className="min-h-screen px-4 py-4 md:px-6 md:py-6"
       style={{
-        backgroundColor: widget.background_color || '#f9fafb',
-        minHeight: '100vh',
+        backgroundColor: 'transparent',
+        color: widget.text_color,
       }}
     >
-      <div className="mx-auto w-full max-w-2xl">
-        {content}
-      </div>
+      <div className="mx-auto w-full max-w-2xl">{content}</div>
     </main>
   )
 }

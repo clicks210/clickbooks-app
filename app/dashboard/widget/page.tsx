@@ -17,6 +17,10 @@ type Widget = {
   confirmation_message: string
   logo_url?: string | null
   is_active: boolean
+  launcher_label?: string | null
+  launcher_icon?: string | null
+  launcher_color?: string | null
+  launcher_position?: string | null
 }
 
 type ProfileRow = {
@@ -33,6 +37,17 @@ const defaultWidgetForm = {
   text_color: '#111111',
   confirmation_message: 'Thanks, your booking request has been received.',
   logo_url: '',
+  launcher_label: 'Book Now',
+  launcher_icon: 'calendar',
+  launcher_color: '#FF9F43',
+  launcher_position: 'right',
+}
+
+const launcherIcons: Record<string, string> = {
+  calendar: '📅',
+  clock: '⏱️',
+  arrow: '→',
+  none: '',
 }
 
 function formatPreviewFullDate(date: Date) {
@@ -151,17 +166,21 @@ export default function WidgetPage() {
 
       setWidgetId(widget.id)
       setForm({
-        name: widget.name || '',
-        headline: widget.headline || '',
-        subheadline: widget.subheadline || '',
-        button_label: widget.button_label || '',
-       accent_color: widget.accent_color || '#FF9F43',
-background_color: widget.background_color || '#FFFFFF',
-text_color: widget.text_color || '#111111',
+        name: widget.name || defaultWidgetForm.name,
+        headline: widget.headline || defaultWidgetForm.headline,
+        subheadline: widget.subheadline || defaultWidgetForm.subheadline,
+        button_label: widget.button_label || defaultWidgetForm.button_label,
+        accent_color: widget.accent_color || defaultWidgetForm.accent_color,
+        background_color: widget.background_color || defaultWidgetForm.background_color,
+        text_color: widget.text_color || defaultWidgetForm.text_color,
         confirmation_message:
-          widget.confirmation_message ||
-          'Thanks, your booking request has been received.',
+          widget.confirmation_message || defaultWidgetForm.confirmation_message,
         logo_url: widget.logo_url || '',
+        launcher_label: widget.launcher_label || defaultWidgetForm.launcher_label,
+        launcher_icon: widget.launcher_icon || defaultWidgetForm.launcher_icon,
+        launcher_color: widget.launcher_color || defaultWidgetForm.launcher_color,
+        launcher_position:
+          widget.launcher_position || defaultWidgetForm.launcher_position,
       })
 
       setLoading(false)
@@ -171,7 +190,7 @@ text_color: widget.text_color || '#111111',
   }, [router, supabase])
 
   function updateField(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target
     setForm((prev) => ({
@@ -226,13 +245,6 @@ text_color: widget.text_color || '#111111',
 
     const { data } = supabase.storage.from('logos').getPublicUrl(filePath)
 
-    if (!data?.publicUrl) {
-      setMessage('Logo uploaded, but public URL could not be created.')
-      setMessageType('error')
-      setUploadingLogo(false)
-      return
-    }
-
     setForm((prev) => ({
       ...prev,
       logo_url: data.publicUrl,
@@ -268,6 +280,10 @@ text_color: widget.text_color || '#111111',
         text_color: form.text_color,
         confirmation_message: form.confirmation_message,
         logo_url: form.logo_url || null,
+        launcher_label: form.launcher_label,
+        launcher_icon: form.launcher_icon,
+        launcher_color: form.launcher_color,
+        launcher_position: form.launcher_position,
         updated_at: new Date().toISOString(),
       })
       .eq('id', widgetId)
@@ -285,7 +301,6 @@ text_color: widget.text_color || '#111111',
   }
 
   const mutedTextColor = useMemo(() => `${form.text_color}B3`, [form.text_color])
-  const subtleTextColor = useMemo(() => `${form.text_color}80`, [form.text_color])
   const softBorderColor = useMemo(() => `${form.text_color}1F`, [form.text_color])
   const softerBorderColor = useMemo(() => `${form.text_color}12`, [form.text_color])
   const softSurface = useMemo(() => `${form.text_color}08`, [form.text_color])
@@ -301,28 +316,13 @@ text_color: widget.text_color || '#111111',
   }, [])
 
   const previewAvailableDates = useMemo(() => {
-    const d1 = new Date()
-    d1.setDate(d1.getDate() + 1)
-
-    const d2 = new Date()
-    d2.setDate(d2.getDate() + 2)
-
-    const d3 = new Date()
-    d3.setDate(d3.getDate() + 4)
-
-    const d4 = new Date()
-    d4.setDate(d4.getDate() + 6)
-
-    const d5 = new Date()
-    d5.setDate(d5.getDate() + 9)
-
-    return new Set([
-      toLocalDateString(d1),
-      toLocalDateString(d2),
-      toLocalDateString(d3),
-      toLocalDateString(d4),
-      toLocalDateString(d5),
-    ])
+    return new Set(
+      [1, 2, 4, 6, 9].map((offset) => {
+        const d = new Date()
+        d.setDate(d.getDate() + offset)
+        return toLocalDateString(d)
+      })
+    )
   }, [])
 
   if (loading) {
@@ -341,13 +341,9 @@ text_color: widget.text_color || '#111111',
     <main className="min-h-screen p-6 md:p-10">
       <div className="container">
         <div className="mb-8">
-          
-
           <h1 className="text-3xl font-semibold md:text-4xl">
             Customize your booking widget
           </h1>
-
-          
         </div>
 
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
@@ -355,33 +351,106 @@ text_color: widget.text_color || '#111111',
             <div className="mb-6">
               <h2 className="text-2xl font-semibold">Widget Settings</h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                These settings control the public widget experience.
+                These settings control the public widget and the floating launcher button.
               </p>
             </div>
 
             <form onSubmit={handleSave} className="space-y-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Widget Name
-                </label>
-                <input
-                  name="name"
-                  value={form.name}
-                  onChange={updateField}
-                  placeholder="Main Widget"
-                  required
-                />
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <h3 className="mb-4 text-lg font-semibold">Launcher Button</h3>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Launcher Label
+                    </label>
+                    <input
+                      name="launcher_label"
+                      value={form.launcher_label}
+                      onChange={updateField}
+                      placeholder="Book Now"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Launcher Icon
+                    </label>
+                    <select
+                      name="launcher_icon"
+                      value={form.launcher_icon}
+                      onChange={updateField}
+                    >
+                      <option value="calendar">Calendar</option>
+                      <option value="clock">Clock</option>
+                      <option value="arrow">Arrow</option>
+                      <option value="none">None</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Launcher Color
+                    </label>
+                    <input
+                      type="color"
+                      name="launcher_color"
+                      value={form.launcher_color}
+                      onChange={updateField}
+                      className="h-12 cursor-pointer rounded-xl p-1"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Launcher Position
+                    </label>
+                    <select
+                      name="launcher_position"
+                      value={form.launcher_position}
+                      onChange={updateField}
+                    >
+                      <option value="right">Bottom Right</option>
+                      <option value="left">Bottom Left</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/10 bg-[var(--surface)] p-5">
+                  <p className="mb-4 text-sm font-medium text-[var(--text-secondary)]">
+                    Launcher Preview
+                  </p>
+
+                  <div className="relative h-36 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    <button
+                      type="button"
+                      className={`absolute bottom-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-[0_12px_30px_rgba(0,0,0,0.18)] ${
+                        form.launcher_position === 'left' ? 'left-5' : 'right-5'
+                      }`}
+                      style={{ backgroundColor: form.launcher_color }}
+                    >
+                      {launcherIcons[form.launcher_icon] && (
+                        <span>{launcherIcons[form.launcher_icon]}</span>
+                      )}
+                      <span>{form.launcher_label || 'Book Now'}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Headline
+                  Widget Name
                 </label>
+                <input name="name" value={form.name} onChange={updateField} required />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Headline</label>
                 <input
                   name="headline"
                   value={form.headline}
                   onChange={updateField}
-                  placeholder="Book your service"
                   required
                 />
               </div>
@@ -394,7 +463,6 @@ text_color: widget.text_color || '#111111',
                   name="subheadline"
                   value={form.subheadline}
                   onChange={updateField}
-                  placeholder="Choose a service, select a day, and book your time."
                   className="min-h-[110px]"
                   required
                 />
@@ -402,13 +470,12 @@ text_color: widget.text_color || '#111111',
 
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Button Label
+                  Main Button Label
                 </label>
                 <input
                   name="button_label"
                   value={form.button_label}
                   onChange={updateField}
-                  placeholder="Book now"
                   required
                 />
               </div>
@@ -421,7 +488,6 @@ text_color: widget.text_color || '#111111',
                   name="confirmation_message"
                   value={form.confirmation_message}
                   onChange={updateField}
-                  placeholder="Thanks, your booking request has been received."
                   className="min-h-[110px]"
                   required
                 />
@@ -442,36 +508,25 @@ text_color: widget.text_color || '#111111',
                     className="block w-full text-sm"
                     disabled={uploadingLogo}
                   />
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    Upload a logo image for the booking page. PNG, JPG, WEBP, or SVG. Max 2MB.
-                  </p>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Logo URL
-                  </label>
+                  <label className="mb-2 block text-sm font-medium">Logo URL</label>
                   <input
                     name="logo_url"
                     value={form.logo_url}
                     onChange={updateField}
                     placeholder="https://your-site.com/logo.png"
                   />
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    Optional. You can also paste a direct image URL instead of uploading.
-                  </p>
                 </div>
 
                 {form.logo_url && (
-                  <div>
-                    <p className="mb-2 block text-sm font-medium">Current Logo</p>
-                    <div className="inline-flex rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <img
-                        src={form.logo_url}
-                        alt="Logo preview"
-                        className="h-12 w-auto max-w-[180px] object-contain"
-                      />
-                    </div>
+                  <div className="inline-flex rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <img
+                      src={form.logo_url}
+                      alt="Logo preview"
+                      className="h-12 w-auto max-w-[180px] object-contain"
+                    />
                   </div>
                 )}
               </div>
@@ -491,9 +546,7 @@ text_color: widget.text_color || '#111111',
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Background
-                  </label>
+                  <label className="mb-2 block text-sm font-medium">Background</label>
                   <input
                     type="color"
                     name="background_color"
@@ -504,9 +557,7 @@ text_color: widget.text_color || '#111111',
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Text Color
-                  </label>
+                  <label className="mb-2 block text-sm font-medium">Text Color</label>
                   <input
                     type="color"
                     name="text_color"
@@ -532,8 +583,8 @@ text_color: widget.text_color || '#111111',
                       messageType === 'success'
                         ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                         : messageType === 'error'
-                        ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                        : 'border-white/10 bg-white/5 text-[var(--text-secondary)]'
+                          ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                          : 'border-white/10 bg-white/5 text-[var(--text-secondary)]'
                     }`}
                   >
                     {message}
@@ -565,8 +616,9 @@ text_color: widget.text_color || '#111111',
             </div>
 
             <div
-              className="rounded-[34px] border bg-white p-6 shadow-[0_30px_90px_rgba(0,0,0,0.10)] md:p-8"
+              className="rounded-[34px] border p-6 shadow-[0_30px_90px_rgba(0,0,0,0.10)] md:p-8"
               style={{
+                backgroundColor: form.background_color,
                 borderColor: softerBorderColor,
                 color: form.text_color,
               }}
@@ -589,10 +641,7 @@ text_color: widget.text_color || '#111111',
                   {form.headline || 'Book your service'}
                 </h2>
 
-                <p
-                  className="mx-auto mt-5 max-w-2xl text-[16px] leading-8"
-                  style={{ color: mutedTextColor }}
-                >
+                <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-8" style={{ color: mutedTextColor }}>
                   {form.subheadline || 'Choose a service, select a day, and book your time.'}
                 </p>
               </div>
@@ -603,66 +652,17 @@ text_color: widget.text_color || '#111111',
                     Choose a service
                   </label>
 
-                  <div className="grid gap-4">
-                    <div
-                      className="rounded-[26px] border p-5"
-                      style={{
-                        borderColor: form.accent_color,
-                        backgroundColor: accentSoft,
-                        color: form.text_color,
-                        boxShadow: '0 10px 24px rgba(0,0,0,0.06)',
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p
-                            className="text-[18px] font-semibold"
-                            style={{ color: form.text_color }}
-                          >
-                            Lawn Care Estimate
-                          </p>
-                          <p className="mt-3 text-[15px] leading-7" style={{ color: mutedTextColor }}>
-                            On-site quote for mowing, cleanup, or regular property service.
-                          </p>
-                        </div>
-
-                        <div
-                          className="mt-1 h-5 w-5 rounded-full border"
-                          style={{
-                            borderColor: form.accent_color,
-                            backgroundColor: form.accent_color,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      className="rounded-[26px] border p-5"
-                      style={{
-                        borderColor: softBorderColor,
-                        backgroundColor: 'transparent',
-                        color: form.text_color,
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p
-                            className="text-[18px] font-semibold"
-                            style={{ color: subtleTextColor }}
-                          >
-                            Spring Cleanup
-                          </p>
-                        </div>
-
-                        <div
-                          className="mt-1 h-5 w-5 rounded-full border"
-                          style={{
-                            borderColor: `${form.text_color}33`,
-                            backgroundColor: 'transparent',
-                          }}
-                        />
-                      </div>
-                    </div>
+                  <div
+                    className="rounded-[26px] border p-5"
+                    style={{
+                      borderColor: form.accent_color,
+                      backgroundColor: accentSoft,
+                    }}
+                  >
+                    <p className="text-[18px] font-semibold">Lawn Care Estimate</p>
+                    <p className="mt-3 text-[15px] leading-7" style={{ color: mutedTextColor }}>
+                      On-site quote for mowing, cleanup, or regular property service.
+                    </p>
                   </div>
                 </section>
 
@@ -671,286 +671,73 @@ text_color: widget.text_color || '#111111',
                     Choose a date
                   </label>
 
-                  <div
-                    className="rounded-[28px] border p-5"
-                    style={{
-                      borderColor: softBorderColor,
-                      backgroundColor: 'transparent',
-                    }}
-                  >
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg font-medium"
-                        style={{
-                          borderColor: softBorderColor,
-                          color: form.text_color,
-                          backgroundColor: '#FFFFFF',
-                        }}
-                      >
-                        ←
-                      </button>
-
-                      <div className="text-center">
-                        <p className="text-[17px] font-semibold" style={{ color: form.text_color }}>
-                          {formatPreviewMonth(previewMonth)}
-                        </p>
-                        <p className="mt-1 text-xs" style={{ color: mutedTextColor }}>
-                          Select an available day
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg font-medium"
-                        style={{
-                          borderColor: softBorderColor,
-                          color: form.text_color,
-                          backgroundColor: '#FFFFFF',
-                        }}
-                      >
-                        →
-                      </button>
-                    </div>
-
-                    <div className="mb-3 grid grid-cols-7 gap-2">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                        <div
-                          key={day}
-                          className="py-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em]"
-                          style={{ color: mutedTextColor }}
-                        >
-                          {day}
-                        </div>
-                      ))}
+                  <div className="rounded-[28px] border p-5" style={{ borderColor: softBorderColor }}>
+                    <div className="mb-5 text-center">
+                      <p className="text-[17px] font-semibold">{formatPreviewMonth(previewMonth)}</p>
+                      <p className="mt-1 text-xs" style={{ color: mutedTextColor }}>
+                        Select an available day
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-7 gap-2">
-                      {previewDays.map((day) => {
+                      {previewDays.slice(0, 28).map((day) => {
                         const dateStr = toLocalDateString(day)
                         const inCurrentMonth = isSameMonth(day, previewMonth)
                         const isAvailable = inCurrentMonth && previewAvailableDates.has(dateStr)
                         const isSelected = dateStr === previewSelectedDate
-                        const isToday = dateStr === toLocalDateString(new Date())
 
                         return (
                           <div
                             key={dateStr}
-                            className="relative flex aspect-square items-center justify-center rounded-[20px] border text-sm font-medium"
+                            className="flex aspect-square items-center justify-center rounded-[18px] border text-sm font-medium"
                             style={{
-                              borderColor: isSelected
-                                ? form.accent_color
-                                : isToday
-                                  ? accentBorder
-                                  : softerBorderColor,
-                              backgroundColor: isSelected
-                                ? form.accent_color
-                                : isAvailable
-                                  ? '#FFFFFF'
-                                  : 'transparent',
-                              color: !inCurrentMonth
-                                ? `${form.text_color}30`
-                                : isSelected
-                                  ? '#111111'
-                                  : isAvailable
-                                    ? form.text_color
-                                    : `${form.text_color}55`,
-                              opacity: inCurrentMonth ? 1 : 0.45,
-                              boxShadow: isSelected ? '0 10px 24px rgba(0,0,0,0.12)' : 'none',
+                              borderColor: isSelected ? form.accent_color : softerBorderColor,
+                              backgroundColor: isSelected ? form.accent_color : isAvailable ? softSurface : 'transparent',
+                              color: isSelected ? '#111111' : form.text_color,
+                              opacity: inCurrentMonth ? 1 : 0.35,
                             }}
                           >
-                            <span>{day.getDate()}</span>
-
-                            {isToday && !isSelected && (
-                              <span
-                                className="pointer-events-none absolute inset-[3px] rounded-[16px] border"
-                                style={{ borderColor: accentBorder }}
-                              />
-                            )}
-
-                            {isAvailable && !isSelected && (
-                              <span
-                                className="absolute bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
-                                style={{ backgroundColor: form.accent_color }}
-                              />
-                            )}
+                            {day.getDate()}
                           </div>
                         )
                       })}
                     </div>
-
-                    <div
-                      className="mt-5 rounded-[22px] border px-4 py-3 text-sm"
-                      style={{
-                        borderColor: accentBorder,
-                        backgroundColor: accentSoft,
-                        color: form.text_color,
-                      }}
-                    >
-                      Selected:{' '}
-                      <span className="font-semibold">
-                        {formatPreviewFullDate(new Date(`${previewSelectedDate}T12:00:00`))}
-                      </span>
-                    </div>
                   </div>
                 </section>
-
-                <section className="space-y-4">
-                  <label className="block text-[15px] font-semibold" style={{ color: form.text_color }}>
-                    Choose a time
-                  </label>
-
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {['9:00 AM', '10:30 AM', '1:00 PM', '2:30 PM'].map((time, index) => {
-                      const isSelected = index === 1
-
-                      return (
-                        <div
-                          key={time}
-                          className="rounded-2xl border px-4 py-3.5 text-center text-sm font-medium"
-                          style={{
-                            borderColor: isSelected ? form.accent_color : softBorderColor,
-                            backgroundColor: isSelected ? accentSoft : 'transparent',
-                            color: isSelected ? form.accent_color : form.text_color,
-                          }}
-                        >
-                          {time}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-
-                <div
-                  className="rounded-[24px] border p-5"
-                  style={{
-                    borderColor: accentBorder,
-                    backgroundColor: accentSoft,
-                  }}
-                >
-                  <p className="text-sm font-semibold" style={{ color: form.text_color }}>
-                    Selected appointment
-                  </p>
-                  <p className="mt-2 text-sm leading-6" style={{ color: mutedTextColor }}>
-                    {formatPreviewFullDate(new Date(`${previewSelectedDate}T12:00:00`))} at 10:30 AM
-                  </p>
-                </div>
 
                 <section className="grid gap-5 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-[15px] font-semibold">
-                      Name
-                    </label>
-                    <div
-                      className="rounded-[18px] border px-4 py-3.5"
-                      style={{
-                        borderColor: softBorderColor,
-                        backgroundColor: softSurface,
-                        color: form.text_color,
-                      }}
-                    >
+                    <label className="mb-2 block text-[15px] font-semibold">Name</label>
+                    <div className="rounded-[18px] border px-4 py-3.5" style={{ borderColor: softBorderColor, backgroundColor: softSurface }}>
                       John Smith
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[15px] font-semibold">
-                      Email
-                    </label>
-                    <div
-                      className="rounded-[18px] border px-4 py-3.5"
-                      style={{
-                        borderColor: softBorderColor,
-                        backgroundColor: softSurface,
-                        color: form.text_color,
-                      }}
-                    >
+                    <label className="mb-2 block text-[15px] font-semibold">Email</label>
+                    <div className="rounded-[18px] border px-4 py-3.5" style={{ borderColor: softBorderColor, backgroundColor: softSurface }}>
                       john@email.com
                     </div>
                   </div>
                 </section>
 
-                <section>
-                  <label className="mb-2 block text-[15px] font-semibold">
-                    Phone
-                  </label>
-                  <div
-                    className="rounded-[18px] border px-4 py-3.5"
-                    style={{
-                      borderColor: softBorderColor,
-                      backgroundColor: softSurface,
-                      color: form.text_color,
-                    }}
-                  >
-                    (555) 555-5555
-                  </div>
-                </section>
-
-                <section>
-                  <label className="mb-2 block text-[15px] font-semibold">
-                    Notes
-                  </label>
-                  <div
-                    className="min-h-[130px] rounded-[18px] border px-4 py-3.5"
-                    style={{
-                      borderColor: softBorderColor,
-                      backgroundColor: softSurface,
-                      color: mutedTextColor,
-                    }}
-                  >
-                    Add any details about the job, property, or request.
-                  </div>
-                </section>
-
-                <div className="space-y-5 pt-2">
-                  <button
-                    type="button"
-                    className="w-full rounded-[20px] px-4 py-4 text-sm font-semibold"
-                    style={{
-                      backgroundColor: form.accent_color,
-                      color: '#111111',
-                    }}
-                  >
-                    {form.button_label || 'Book now'}
-                  </button>
-
-                  <div
-                    className="flex items-center justify-center gap-2 pt-4"
-                    style={{
-                      borderTop: `1px solid ${softBorderColor}`,
-                    }}
-                  >
-                    <span
-                      className="text-[11px] uppercase tracking-[0.18em]"
-                      style={{
-                        color: mutedTextColor,
-                        fontWeight: 500,
-                      }}
-                    >
-                      Powered by
-                    </span>
-
-                    <img
-                      src="https://cdn.prod.website-files.com/689be253c8ffdea53a0bdafb/69e653b95fea092b0ad7f92d_ChatGPT%20Image%20Apr%2020%2C%202026%20at%2009_25_20%20AM.png"
-                      alt="Click"
-                      className="h-4 w-auto object-contain opacity-90"
-                    />
-                  </div>
-                </div>
-
-                <div
-                  className="rounded-[24px] border p-4"
+                <button
+                  type="button"
+                  className="w-full rounded-[20px] px-4 py-4 text-sm font-semibold"
                   style={{
-                    borderColor: softBorderColor,
-                    backgroundColor: softSurface,
+                    backgroundColor: form.accent_color,
+                    color: '#111111',
                   }}
                 >
+                  {form.button_label || 'Book now'}
+                </button>
+
+                <div className="rounded-[24px] border p-4" style={{ borderColor: softBorderColor, backgroundColor: softSurface }}>
                   <p className="text-sm" style={{ color: mutedTextColor }}>
                     <span className="font-semibold" style={{ color: form.text_color }}>
                       Confirmation preview:
                     </span>{' '}
-                    {form.confirmation_message ||
-                      'Thanks, your booking request has been received.'}
+                    {form.confirmation_message}
                   </p>
                 </div>
               </div>

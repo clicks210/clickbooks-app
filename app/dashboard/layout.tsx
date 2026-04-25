@@ -140,9 +140,9 @@ export default async function DashboardLayout({
                 href="/dashboard/profile"
                 className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)]/80 px-3 py-3 transition-all duration-200 hover:border-[rgba(255,159,67,0.18)] hover:bg-[var(--surface-alt)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--accent-strong),#ffb86b)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(255,159,67,0.30)]">
-                  {initials}
-                </div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white text-sm font-semibold shadow-[0_8px_20px_rgba(255,159,67,0.28)]">
+                {initials}
+              </div>
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
@@ -165,9 +165,7 @@ export default async function DashboardLayout({
           <header className="border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur">
             <div className="flex items-center justify-between px-6 py-5 md:px-8">
               <div>
-                <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
-                  Dashboard
-                </h1>
+                
               </div>
 
               <HeaderActions />

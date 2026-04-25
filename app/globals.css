@@ -175,17 +175,14 @@ select:focus {
    BUTTONS
 ---------------------------------- */
 
+/* 🟠 Primary (orange) */
 .btn-primary {
   background: var(--accent);
   color: #ffffff;
-  border: none;
   border-radius: 14px;
   padding: 12px 18px;
   font-weight: 600;
-  transition:
-    transform 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: all 0.15s ease;
   box-shadow: 0 8px 20px rgba(244, 177, 131, 0.26);
   cursor: pointer;
 }
@@ -195,29 +192,37 @@ select:focus {
   transform: translateY(-1px);
 }
 
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.72);
+/* ⚪ White */
+.btn-white {
+  background: #ffffff;
+  color: #000000;
   border: 1px solid var(--border);
-  color: var(--text-primary);
   border-radius: 14px;
   padding: 12px 18px;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-white:hover {
+  background: var(--bg-soft);
+  transform: translateY(-1px);
+}
+
+/* ⚪ Light Grey */
+.btn-secondary {
+  background: #f3f4f6;
+  color: #000000;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 18px;
+  transition: all 0.15s ease;
   cursor: pointer;
 }
 
 .btn-secondary:hover {
-  background: var(--bg-soft);
-  border-color: var(--border-strong);
+  background: #e5e7eb;
   transform: translateY(-1px);
 }
-
 /* ---------------------------------
    STATUS / BADGES
 ---------------------------------- */
