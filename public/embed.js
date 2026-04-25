@@ -43,7 +43,7 @@
       font-weight: 700;
       cursor: pointer;
       box-shadow: 0 12px 30px rgba(0,0,0,0.18);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -233,6 +233,7 @@
   function openWidget(service) {
     setWidgetService(service)
 
+    button.style.display = 'none'
     overlay.style.display = 'flex'
 
     requestAnimationFrame(() => {
@@ -248,6 +249,7 @@
 
     setTimeout(() => {
       overlay.style.display = 'none'
+      button.style.display = 'inline-flex'
       document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
     }, 200)
