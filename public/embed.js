@@ -222,7 +222,17 @@
   iframe.title = 'Booking Widget'
   iframe.scrolling = 'yes'
 
-  function openWidget() {
+  function setWidgetService(service) {
+    if (service) {
+      iframe.src = `${widgetUrl}&service=${encodeURIComponent(service)}`
+    } else {
+      iframe.src = widgetUrl
+    }
+  }
+
+  function openWidget(service) {
+    setWidgetService(service)
+
     overlay.style.display = 'flex'
 
     requestAnimationFrame(() => {
@@ -243,11 +253,11 @@
     }, 200)
   }
 
-  function toggleWidget() {
+  function toggleWidget(service) {
     if (overlay.classList.contains('cb-open')) {
       closeWidget()
     } else {
-      openWidget()
+      openWidget(service)
     }
   }
 
@@ -255,8 +265,12 @@
   window.ClickBooks.open = openWidget
   window.ClickBooks.close = closeWidget
   window.ClickBooks.toggle = toggleWidget
+  window.ClickBooks.setService = setWidgetService
 
-  button.addEventListener('click', openWidget)
+  button.addEventListener('click', function () {
+    openWidget()
+  })
+
   close.addEventListener('click', closeWidget)
 
   overlay.addEventListener('click', function (e) {
@@ -272,7 +286,9 @@
     if (!trigger) return
 
     e.preventDefault()
-    openWidget()
+
+    const service = trigger.getAttribute('data-service')
+    openWidget(service)
   })
 
   iframeWrap.appendChild(iframe)

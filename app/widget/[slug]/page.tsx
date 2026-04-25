@@ -47,7 +47,12 @@ export default async function WidgetPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ success?: string; error?: string; embed?: string }>
+  searchParams: Promise<{
+    success?: string
+    error?: string
+    embed?: string
+    service?: string
+  }>
 }) {
   const { slug } = await params
   const resolvedSearchParams = await searchParams
@@ -55,6 +60,7 @@ export default async function WidgetPage({
   const success = resolvedSearchParams.success === '1'
   const error = resolvedSearchParams.error === '1'
   const embed = resolvedSearchParams.embed === '1'
+  const selectedServiceName = resolvedSearchParams.service
 
   const { data: business, error: businessError } = await supabase
     .from('businesses')
@@ -88,42 +94,41 @@ export default async function WidgetPage({
       services={services ?? []}
       success={success}
       error={error}
+      selectedServiceName={selectedServiceName}
     />
   )
-if (embed) {
-  return (
-    <>
-      <style>{`
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    overflow: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
 
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar {
-    display: none;
-  }
-`}</style>
+  if (embed) {
+    return (
+      <>
+        <style>{`
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
 
-      <main
-        className="h-screen w-screen overflow-hidden"
-        style={{
-          backgroundColor: 'transparent',
-          color: widget.text_color,
-        }}
-      >
-        <div className="h-full w-full">
-          {content}
-        </div>
-      </main>
-    </>
-  )
-}
-  
+          html::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+
+        <main
+          className="h-screen w-screen overflow-hidden"
+          style={{
+            backgroundColor: 'transparent',
+            color: widget.text_color,
+          }}
+        >
+          <div className="h-full w-full">{content}</div>
+        </main>
+      </>
+    )
+  }
 
   return (
     <main

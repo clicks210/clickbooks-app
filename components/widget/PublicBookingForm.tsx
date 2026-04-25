@@ -77,6 +77,10 @@ function buildCalendarDays(currentMonth: Date) {
   })
 }
 
+function normalizeServiceName(value: string) {
+  return value.trim().toLowerCase()
+}
+
 const clickBooksLogo =
   'https://cdn.prod.website-files.com/689be253c8ffdea53a0bdafb/69ed05f315c0d5a423658322_clickbooksL2.png'
 
@@ -86,12 +90,14 @@ export default function PublicBookingForm({
   services,
   success,
   error,
+  selectedServiceName,
 }: {
   business: Business
   widget: Widget
   services: Service[]
   success?: boolean
   error?: boolean
+  selectedServiceName?: string
 }) {
   const [selectedServiceId, setSelectedServiceId] = useState('')
   const [availableDates, setAvailableDates] = useState<string[]>([])
@@ -126,6 +132,19 @@ export default function PublicBookingForm({
 
   const availableDateSet = useMemo(() => new Set(availableDates), [availableDates])
   const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth])
+
+  useEffect(() => {
+  if (!selectedServiceName || services.length === 0) return
+
+  const matchedService = services.find(
+    (service) =>
+      normalizeServiceName(service.name) === normalizeServiceName(selectedServiceName)
+  )
+
+  if (matchedService) {
+    setSelectedServiceId(matchedService.id)
+  }
+}, [selectedServiceName, services])
 
   useEffect(() => {
     async function loadDates() {
