@@ -84,19 +84,19 @@
     }
 
     .cb-modal {
-  position: relative;
-  width: 100%;
-  max-width: 520px;
-  height: 760px;
-  max-height: calc(100vh - 40px);
-  display: flex;
-  border-radius: 28px;
-  background: transparent !important;
-  overflow: hidden;
-  box-shadow: none;
-  transform: translateY(10px) scale(0.985);
-  transition: transform 0.22s ease;
-}
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      height: 760px;
+      max-height: calc(100vh - 40px);
+      display: flex;
+      border-radius: 28px;
+      background: transparent !important;
+      overflow: hidden;
+      box-shadow: none;
+      transform: translateY(10px) scale(0.985);
+      transition: transform 0.22s ease;
+    }
 
     .cb-overlay.cb-open .cb-modal {
       transform: translateY(0) scale(1);
@@ -188,6 +188,8 @@
   }`
   button.style.background = color
   button.setAttribute('aria-label', label)
+  button.setAttribute('type', 'button')
+  button.setAttribute('data-clickbooks-launcher', 'true')
 
   button.innerHTML = `
     ${safeIcon ? `<span class="cb-launcher-icon">${safeIcon}</span>` : ''}
@@ -196,12 +198,18 @@
 
   const overlay = document.createElement('div')
   overlay.className = 'cb-overlay'
+  overlay.setAttribute('data-clickbooks-overlay', 'true')
 
   const modal = document.createElement('div')
   modal.className = 'cb-modal'
+  modal.setAttribute('role', 'dialog')
+  modal.setAttribute('aria-modal', 'true')
+  modal.setAttribute('aria-label', 'Booking widget')
+  modal.setAttribute('data-clickbooks-panel', 'true')
 
   const close = document.createElement('button')
   close.className = 'cb-close'
+  close.setAttribute('type', 'button')
   close.setAttribute('aria-label', 'Close booking widget')
   close.innerHTML = '&times;'
 
@@ -216,19 +224,37 @@
 
   function openWidget() {
     overlay.style.display = 'flex'
-    requestAnimationFrame(() => overlay.classList.add('cb-open'))
+
+    requestAnimationFrame(() => {
+      overlay.classList.add('cb-open')
+    })
+
     document.documentElement.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
   }
 
   function closeWidget() {
     overlay.classList.remove('cb-open')
+
     setTimeout(() => {
       overlay.style.display = 'none'
       document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
     }, 200)
   }
+
+  function toggleWidget() {
+    if (overlay.classList.contains('cb-open')) {
+      closeWidget()
+    } else {
+      openWidget()
+    }
+  }
+
+  window.ClickBooks = window.ClickBooks || {}
+  window.ClickBooks.open = openWidget
+  window.ClickBooks.close = closeWidget
+  window.ClickBooks.toggle = toggleWidget
 
   button.addEventListener('click', openWidget)
   close.addEventListener('click', closeWidget)
@@ -239,6 +265,14 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeWidget()
+  })
+
+  document.addEventListener('click', function (e) {
+    const trigger = e.target.closest('[data-open-clickbooks]')
+    if (!trigger) return
+
+    e.preventDefault()
+    openWidget()
   })
 
   iframeWrap.appendChild(iframe)
