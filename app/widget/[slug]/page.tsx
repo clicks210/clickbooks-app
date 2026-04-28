@@ -48,7 +48,6 @@ export default async function WidgetPage({
 }: {
   params: Promise<{ slug: string }>
   searchParams: Promise<{
-    success?: string
     error?: string
     embed?: string
     service?: string
@@ -57,7 +56,6 @@ export default async function WidgetPage({
   const { slug } = await params
   const resolvedSearchParams = await searchParams
 
-  const success = resolvedSearchParams.success === '1'
   const error = resolvedSearchParams.error === '1'
   const embed = resolvedSearchParams.embed === '1'
   const selectedServiceName = resolvedSearchParams.service
@@ -92,7 +90,6 @@ export default async function WidgetPage({
       business={business}
       widget={widget}
       services={services ?? []}
-      success={success}
       error={error}
       selectedServiceName={selectedServiceName}
     />
@@ -105,8 +102,8 @@ export default async function WidgetPage({
           html, body {
             margin: 0;
             padding: 0;
-            background: transparent;
-            overflow: auto;
+            background: ${widget.background_color || '#FFFFFF'};
+            overflow: hidden;
             scrollbar-width: none;
             -ms-overflow-style: none;
           }
@@ -118,13 +115,15 @@ export default async function WidgetPage({
         `}</style>
 
         <main
-          className="h-screen w-screen overflow-hidden"
+          className="flex h-screen w-screen items-center justify-center overflow-hidden"
           style={{
-            backgroundColor: 'transparent',
+            backgroundColor: widget.background_color || '#FFFFFF',
             color: widget.text_color,
           }}
         >
-          <div className="h-full w-full">{content}</div>
+          <div className="flex h-full w-full items-center justify-center">
+            {content}
+          </div>
         </main>
       </>
     )
@@ -134,7 +133,7 @@ export default async function WidgetPage({
     <main
       className="min-h-screen px-4 py-4 md:px-6 md:py-6"
       style={{
-        backgroundColor: 'transparent',
+        backgroundColor: widget.background_color || '#FFFFFF',
         color: widget.text_color,
       }}
     >

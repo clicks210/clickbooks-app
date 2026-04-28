@@ -88,7 +88,6 @@ export default function PublicBookingForm({
   business,
   widget,
   services,
-  success,
   error,
   selectedServiceName,
 }: {
@@ -110,6 +109,10 @@ export default function PublicBookingForm({
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [datesError, setDatesError] = useState('')
   const [slotsError, setSlotsError] = useState('')
+
+  const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const mutedTextColor = useMemo(() => `${widget.text_color}B3`, [widget.text_color])
   const subtleTextColor = useMemo(() => `${widget.text_color}80`, [widget.text_color])
@@ -134,17 +137,17 @@ export default function PublicBookingForm({
   const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth])
 
   useEffect(() => {
-  if (!selectedServiceName || services.length === 0) return
+    if (!selectedServiceName || services.length === 0) return
 
-  const matchedService = services.find(
-    (service) =>
-      normalizeServiceName(service.name) === normalizeServiceName(selectedServiceName)
-  )
+    const matchedService = services.find(
+      (service) =>
+        normalizeServiceName(service.name) === normalizeServiceName(selectedServiceName)
+    )
 
-  if (matchedService) {
-    setSelectedServiceId(matchedService.id)
-  }
-}, [selectedServiceName, services])
+    if (matchedService) {
+      setSelectedServiceId(matchedService.id)
+    }
+  }, [selectedServiceName, services])
 
   useEffect(() => {
     async function loadDates() {
@@ -242,101 +245,54 @@ export default function PublicBookingForm({
     return currentMonth < startOfMonth(lastAvailable)
   }, [availableDates, currentMonth])
 
-  if (success) {
-    return (
-      <div
-  className="mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[34px] border shadow-[0_30px_90px_rgba(0,0,0,0.10)]"
-  style={outerShellStyle}
->
-        <div className="cb-scroll-shell">
-          <div className="cb-fade-up flex min-h-full w-full flex-col justify-center p-6 md:p-10" style={{ color: widget.text_color }}>
-            <div className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
-              {widget.logo_url && (
-                <div className="mb-6">
-                  <img
-                    src={widget.logo_url}
-                    alt={`${business.name} logo`}
-                    className="h-24 w-auto max-w-[260px] object-contain"
-                  />
-                </div>
-              )}
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
 
-              <div
-                className="cb-pop-in mb-4 inline-flex rounded-full border px-4 py-2 text-sm font-semibold"
-                style={{
-                  borderColor: accentBorder,
-                  backgroundColor: accentSoft,
-                  color: widget.accent_color,
-                }}
-              >
-                Booking Confirmed
-              </div>
+    setSubmitting(true)
+    setSubmitError('')
+    setBookingSuccess(false)
 
-              <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                You’re all set
-              </h2>
+    const form = e.currentTarget
+    const formData = new FormData(form)
 
-              <p className="mt-4 max-w-md text-base leading-7" style={{ color: mutedTextColor }}>
-                {widget.confirmation_message || 'Thanks, your booking request has been received.'}
-              </p>
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        body: formData,
+      })
 
-              <div
-                className="mt-8 w-full rounded-[24px] border p-5 text-left"
-                style={{ borderColor: softBorderColor, backgroundColor: softSurface }}
-              >
-                <p className="text-sm font-semibold" style={{ color: widget.text_color }}>
-                  {business.name} has received your request.
-                </p>
-                <p className="mt-2 text-sm leading-6" style={{ color: mutedTextColor }}>
-                  You can close this window, or submit another booking below.
-                </p>
-              </div>
+      const data = await res.json()
 
-              <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const url = new URL(window.location.href)
-                    url.searchParams.delete('success')
-                    url.searchParams.delete('error')
-                    window.location.href = url.toString()
-                  }}
-                  className="cb-button-lift inline-flex rounded-2xl px-5 py-3 text-sm font-semibold transition"
-                  style={{ backgroundColor: widget.accent_color, color: '#111111' }}
-                >
-                  Book another time
-                </button>
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Booking failed.')
+      }
 
-                <button
-                  type="button"
-                  onClick={() => window.history.back()}
-                  className="cb-button-lift inline-flex rounded-2xl border px-5 py-3 text-sm font-medium transition"
-                  style={{
-                    borderColor: softBorderColor,
-                    color: widget.text_color,
-                    backgroundColor: 'transparent',
-                  }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      setBookingSuccess(true)
+      form.reset()
 
-        <ClickBooksFooter borderColor={softBorderColor} />
-        <WidgetStyles accentSoft={accentSoft} accentColor={widget.accent_color} />
-      </div>
-    )
+      setSelectedServiceId('')
+      setSelectedDate('')
+      setSelectedTime('')
+      setAvailableSlots([])
+      setAvailableDates([])
+      setCurrentMonth(startOfMonth(new Date()))
+    } catch {
+      setSubmitError('Something went wrong while submitting your booking. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div
-  className="mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[34px] border shadow-[0_30px_90px_rgba(0,0,0,0.10)]"
-  style={outerShellStyle}
->
+      className="mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[34px] border shadow-[0_30px_90px_rgba(0,0,0,0.10)]"
+      style={outerShellStyle}
+    >
       <div className="cb-scroll-shell">
-        <form action="/api/bookings" method="POST" className="cb-fade-up space-y-8 px-6 pb-6 pt-6 md:px-10 md:pb-8 md:pt-10">
+        <form
+          onSubmit={handleSubmit}
+          className="cb-fade-up space-y-8 px-6 pb-6 pt-6 md:px-10 md:pb-8 md:pt-10"
+        >
           <input type="hidden" name="business_id" value={business.id} />
           <input type="hidden" name="service_id" value={selectedServiceId} />
           <input type="hidden" name="booking_date" value={selectedDate} />
@@ -365,9 +321,22 @@ export default function PublicBookingForm({
             </p>
           </div>
 
-          {error && (
+          {bookingSuccess && (
+            <div
+              className="cb-pop-in rounded-[22px] border p-4 text-sm font-semibold"
+              style={{
+                borderColor: accentBorder,
+                backgroundColor: accentSoft,
+                color: widget.text_color,
+              }}
+            >
+              {widget.confirmation_message || 'Booking complete — your request has been sent.'}
+            </div>
+          )}
+
+          {(error || submitError) && (
             <div className="rounded-[22px] border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-              Something went wrong while submitting your booking. Please try again.
+              {submitError || 'Something went wrong while submitting your booking. Please try again.'}
             </div>
           )}
 
@@ -384,7 +353,10 @@ export default function PublicBookingForm({
                   <button
                     key={service.id}
                     type="button"
-                    onClick={() => setSelectedServiceId(service.id)}
+                    onClick={() => {
+                      setBookingSuccess(false)
+                      setSelectedServiceId(service.id)
+                    }}
                     className="rounded-[26px] border p-5 text-left transition"
                     style={{
                       borderColor: isSelected ? widget.accent_color : softBorderColor,
@@ -498,6 +470,7 @@ export default function PublicBookingForm({
                         type="button"
                         onClick={() => {
                           if (!isAvailable) return
+                          setBookingSuccess(false)
                           setSelectedDate(dateStr)
                         }}
                         disabled={!isAvailable}
@@ -571,7 +544,10 @@ export default function PublicBookingForm({
                     <button
                       key={slot}
                       type="button"
-                      onClick={() => setSelectedTime(slot)}
+                      onClick={() => {
+                        setBookingSuccess(false)
+                        setSelectedTime(slot)
+                      }}
                       className="rounded-2xl border px-4 py-3.5 text-sm font-medium transition"
                       style={{
                         borderColor: isSelected ? widget.accent_color : softBorderColor,
@@ -628,11 +604,15 @@ export default function PublicBookingForm({
           <div className="pt-1 pb-0">
             <button
               type="submit"
-              disabled={!selectedServiceId || !selectedDate || !selectedTime}
+              disabled={submitting || !selectedServiceId || !selectedDate || !selectedTime}
               className="cb-submit-button w-full rounded-[20px] px-4 py-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
               style={{ backgroundColor: widget.accent_color, color: '#111111' }}
             >
-              {widget.button_label || 'Book now'}
+              {submitting
+                ? 'Submitting...'
+                : bookingSuccess
+                  ? 'Booking sent'
+                  : widget.button_label || 'Book now'}
             </button>
           </div>
         </form>
@@ -727,36 +707,36 @@ function WidgetStyles({ accentSoft, accentColor }: { accentSoft: string; accentC
   return (
     <style>{`
       html,
-        body {
-          margin: 0;
-          overflow-y: auto;
-          overflow-x: hidden;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
+      body {
+        margin: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
 
-        html::-webkit-scrollbar,
-        body::-webkit-scrollbar {
-          width: 0 !important;
-          height: 0 !important;
-          display: none !important;
-        }
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
+        display: none !important;
+      }
 
-        .cb-scroll-shell {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
+      .cb-scroll-shell {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
 
-.cb-scroll-shell::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  display: none !important;
-}
+      .cb-scroll-shell::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
+        display: none !important;
+      }
 
       .cb-fade-up {
         animation: cbFadeUp 320ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -779,9 +759,9 @@ function WidgetStyles({ accentSoft, accentColor }: { accentSoft: string; accentC
       }
 
       .cb-submit-button:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 18px 36px rgba(0,0,0,0.16);
-      }
+      transform: translateY(-1px);
+      box-shadow: 0 18px 36px rgba(0,0,0,0.16);
+    }
 
       .cb-submit-button:active:not(:disabled) {
         transform: translateY(0);

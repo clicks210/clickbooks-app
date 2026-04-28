@@ -87,7 +87,7 @@
       position: relative;
       width: 100%;
       max-width: 520px;
-      height: 760px;
+      height: 640px;
       max-height: calc(100vh - 40px);
       display: flex;
       border-radius: 28px;

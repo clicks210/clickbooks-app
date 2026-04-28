@@ -15,16 +15,6 @@ const supabaseAdmin = createClient(
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const APP_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  'https://sxqopxep.up.railway.app'
-).replace(/\/$/, '')
-
-function redirectToWidget(slug: string, status: 'success' | 'error') {
-  return NextResponse.redirect(`${APP_URL}/widget/${slug}?${status}=1`, 303)
-}
-
 function formatDateLabel(dateStr: string) {
   const date = new Date(`${dateStr}T12:00:00`)
   return date.toLocaleDateString(undefined, {
@@ -147,7 +137,7 @@ export async function POST(req: Request) {
     !booking_time
   ) {
     return NextResponse.json(
-      { error: 'Missing required booking fields' },
+      { success: false, error: 'Missing required booking fields' },
       { status: 400 }
     )
   }
@@ -167,9 +157,9 @@ export async function POST(req: Request) {
     .eq('id', business_id)
     .single()
 
-  if (businessError || !business?.slug) {
+  if (businessError || !business) {
     return NextResponse.json(
-      { error: 'Business not found' },
+      { success: false, error: 'Business not found' },
       { status: 404 }
     )
   }
@@ -182,7 +172,10 @@ export async function POST(req: Request) {
     .single()
 
   if (serviceError || !service) {
-    return redirectToWidget(business.slug, 'error')
+    return NextResponse.json(
+      { success: false, error: 'Service not found' },
+      { status: 404 }
+    )
   }
 
   const { data: insertedBooking, error } = await supabaseAdmin
@@ -204,7 +197,11 @@ export async function POST(req: Request) {
 
   if (error || !insertedBooking) {
     console.error('booking insert error:', error)
-    return redirectToWidget(business.slug, 'error')
+
+    return NextResponse.json(
+      { success: false, error: 'Failed to create booking' },
+      { status: 500 }
+    )
   }
 
   const duration = Number(service.duration_minutes || 0)
@@ -400,5 +397,9 @@ export async function POST(req: Request) {
     }
   }
 
-  return redirectToWidget(business.slug, 'success')
+  return NextResponse.json({
+    success: true,
+    bookingId: insertedBooking.id,
+    message: 'Booking created successfully',
+  })
 }
