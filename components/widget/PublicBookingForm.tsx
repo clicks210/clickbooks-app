@@ -420,7 +420,7 @@ export default function PublicBookingForm({
                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
                     disabled={!canGoPrevMonth}
                     className="cb-calendar-arrow inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg font-medium transition disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{ borderColor: softBorderColor, color: widget.text_color, backgroundColor: '#FFFFFF' }}
+                    style={{borderColor: softBorderColor, color: widget.text_color,backgroundColor: softSurface,}}
                     aria-label="Previous month"
                   >
                     ←
@@ -440,7 +440,7 @@ export default function PublicBookingForm({
                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
                     disabled={!canGoNextMonth}
                     className="cb-calendar-arrow inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-lg font-medium transition disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{ borderColor: softBorderColor, color: widget.text_color, backgroundColor: '#FFFFFF' }}
+                    style={{borderColor: softBorderColor, color: widget.text_color,backgroundColor: softSurface,}}
                     aria-label="Next month"
                   >
                     →
@@ -477,8 +477,12 @@ export default function PublicBookingForm({
                         className="cb-calendar-day relative aspect-square rounded-[20px] border text-sm font-medium transition disabled:cursor-not-allowed"
                         style={{
                           borderColor: isSelected ? widget.accent_color : isToday ? accentBorder : softerBorderColor,
-                          backgroundColor: isSelected ? widget.accent_color : isAvailable ? '#FFFFFF' : 'transparent',
-                          color: !inCurrentMonth
+                          backgroundColor: isSelected
+                          ? widget.accent_color
+                          : isAvailable
+                            ? accentSoft
+                            : 'transparent',
+                              color: !inCurrentMonth
                             ? `${widget.text_color}30`
                             : isSelected
                               ? '#111111'
